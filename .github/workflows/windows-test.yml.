@@ -1,0 +1,38 @@
+
+name: Windows Test
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows-test:
+    runs-on: windows-2025
+    timeout-minutes: 20
+
+    steps:
+      - name: Check Windows
+        shell: pwsh
+        run: |
+          Get-CimInstance Win32_OperatingSystem |
+            Select-Object Caption, Version
+
+      - name: Connect Tailscale
+        uses: tailscale/github-action@v4
+        with:
+          authkey: ${{ secrets.TAILSCALE_AUTH_KEY }}
+
+      - name: Verify Tailscale
+        shell: pwsh
+        run: |
+          $exe = "$env:ProgramFiles\Tailscale\tailscale.exe"
+          $status = & $exe status --json |
+            ConvertFrom-Json
+
+          if ($status.BackendState -ne "Running") {
+            throw "Tailscale connection failed"
+          }
+
+          Write-Host "Tailscale connected!"
